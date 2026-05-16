@@ -1,42 +1,116 @@
-import { useContext } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axiosInstance from "../utils/axiosConfig";
-import { API_PATHS } from "../utils/apiPaths";
-import Loading from "../components/Loading";
-import { useCallback, useEffect, useState } from "react";
 import {
-  Card,
-  Typography,
-  Tag,
   Avatar,
-  Checkbox,
-  List,
-  Row,
-  Col,
-  Space,
   Button,
-  Divider,
-  Tooltip,
+  Card,
+  Checkbox,
+  Col,
+  Empty,
+  List,
   Progress,
-  Badge,
+  Row,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
 } from "antd";
 import {
+  ArrowLeftOutlined,
   CalendarOutlined,
-  UserOutlined,
-  LinkOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  LinkOutlined,
+  PaperClipOutlined,
+  ThunderboltOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
+
 import DashboardLayout from "../components/DashboardLayout";
-import { ThemeContext } from "../context/ThemeContext";
+import Loading from "../components/Loading";
+import axiosInstance from "../utils/axiosConfig";
+import { API_PATHS } from "../utils/apiPaths";
 
 const { Title, Text, Paragraph } = Typography;
 
+const getSecureImageUrl = (url) => url?.replace(/^http:\/\//, "https://");
+
+const statusMap = {
+  Completed: {
+    icon: <CheckCircleOutlined />,
+    color: "#86efac",
+    bg: "rgba(34, 197, 94, 0.12)",
+    border: "rgba(34, 197, 94, 0.26)",
+  },
+  "In Progress": {
+    icon: <ThunderboltOutlined />,
+    color: "#93c5fd",
+    bg: "rgba(59, 130, 246, 0.12)",
+    border: "rgba(59, 130, 246, 0.26)",
+  },
+  Pending: {
+    icon: <ClockCircleOutlined />,
+    color: "#fed7aa",
+    bg: "rgba(249, 115, 22, 0.12)",
+    border: "rgba(249, 115, 22, 0.26)",
+  },
+  Overdue: {
+    icon: <ExclamationCircleOutlined />,
+    color: "#fecaca",
+    bg: "rgba(239, 68, 68, 0.12)",
+    border: "rgba(239, 68, 68, 0.26)",
+  },
+};
+
+const priorityMap = {
+  High: {
+    color: "#fecaca",
+    bg: "rgba(239, 68, 68, 0.12)",
+    border: "rgba(239, 68, 68, 0.26)",
+  },
+  Medium: {
+    color: "#bae6fd",
+    bg: "rgba(56, 189, 248, 0.12)",
+    border: "rgba(56, 189, 248, 0.26)",
+  },
+  Low: {
+    color: "#bbf7d0",
+    bg: "rgba(34, 197, 94, 0.12)",
+    border: "rgba(34, 197, 94, 0.26)",
+  },
+};
+
+function SoftTag({ value, map }) {
+  const style = map[value] || {
+    color: "#e5e7eb",
+    bg: "rgba(148, 163, 184, 0.12)",
+    border: "rgba(148, 163, 184, 0.22)",
+  };
+
+  return (
+    <Tag
+      style={{
+        color: style.color,
+        background: style.bg,
+        border: `1px solid ${style.border}`,
+        borderRadius: 999,
+        padding: "6px 12px",
+        fontWeight: 950,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 7,
+      }}
+    >
+      {style.icon} {value || "N/A"}
+    </Tag>
+  );
+}
+
 function TaskDetails() {
-  const { isDarkMode } = useContext(ThemeContext);
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +121,7 @@ function TaskDetails() {
       const response = await axiosInstance.get(
         API_PATHS.TASKS.GET_TASK_BY_ID + id
       );
+
       if (response.data) {
         setTask(response.data);
       }
@@ -70,10 +145,10 @@ function TaskDetails() {
         API_PATHS.TASKS.UPDATE_TODO_CHECKLIST + taskId + "/todo",
         { todoChecklist }
       );
+
       if (response.status === 200) {
         setTask(response.data?.task || task);
       } else {
-        // Optionally revert the toggle if the API call fails.
         todoChecklist[index].completed = !todoChecklist[index].completed;
       }
     } catch (error) {
@@ -82,11 +157,14 @@ function TaskDetails() {
     }
   };
 
-  const handleClick = (link) => {
-    if (!/^https?:\/\//i.test(link)) {
-      link = "https://" + link;
+  const openAttachment = (link) => {
+    let finalLink = link;
+
+    if (!/^https?:\/\//i.test(finalLink)) {
+      finalLink = "https://" + finalLink;
     }
-    window.open(link, "_blank");
+
+    window.open(finalLink, "_blank");
   };
 
   useEffect(() => {
@@ -95,352 +173,337 @@ function TaskDetails() {
     }
   }, [id, getTaskDetailsById]);
 
-  const getPriorityColor = (priority) => {
-    switch (priority?.toLowerCase()) {
-      case "high":
-        return "#ff4d4f";
-      case "medium":
-        return "#faad14";
-      case "low":
-        return "#52c41a";
-      default:
-        return "#d9d9d9";
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status?.toLowerCase()) {
-      case "completed":
-        return <CheckCircleOutlined style={{ color: "#52c41a" }} />;
-      case "in-progress":
-        return <ExclamationCircleOutlined style={{ color: "#faad14" }} />;
-      case "pending":
-        return <ClockCircleOutlined style={{ color: "#8c8c8c" }} />;
-      case "overdue":
-        return <ExclamationCircleOutlined style={{ color: "#ff4d4f" }} />;
-      default:
-        return <ClockCircleOutlined style={{ color: "#8c8c8c" }} />;
-    }
-  };
-
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    if (!dateString) return "N/A";
+
+    return new Date(dateString).toLocaleDateString(undefined, {
       day: "numeric",
       month: "short",
       year: "numeric",
     });
   };
 
+  const completedTasks =
+    task?.todoChecklist?.filter((item) => item.completed).length || 0;
+  const totalTasks = task?.todoChecklist?.length || 0;
+
+  const progressPercent = useMemo(() => {
+    if (!totalTasks) return 0;
+    return Math.round((completedTasks / totalTasks) * 100);
+  }, [completedTasks, totalTasks]);
+
   if (loading || !task) {
     return <Loading />;
   }
 
-  const completedTasks =
-    task.todoChecklist?.filter((item) => item.completed).length || 0;
-  const totalTasks = task.todoChecklist?.length || 0;
-  const progressPercent =
-    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
   return (
     <DashboardLayout defaultActiveKey="my-tasks">
-      <div
-        style={{
-          padding: "24px",
-          backgroundColor: isDarkMode ? "#23272f" : "#f5f5f5",
-          minHeight: "100vh",
-        }}
-      >
-        <Card
-          style={{
-            maxWidth: 1200,
-            margin: "0 auto",
-            borderRadius: "12px",
-            boxShadow: isDarkMode
-              ? "0 6px 32px 0 rgba(0,0,0,0.45), 0 1.5px 6px 0 rgba(0,0,0,0.25)"
-              : "0 4px 24px 0 rgba(0,0,0,0.18), 0 1.5px 6px 0 rgba(0,0,0,0.10)",
-            background: isDarkMode ? "rgb(15 26 47)" : "#fff",
-            color: isDarkMode ? "#fff" : undefined,
-          }}
+      <div style={styles.page}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate("/user/tasks")}
+          style={styles.backBtn}
         >
-          {/* Back Button */}
-          <Button
-            type="default"
-            onClick={() => navigate("/user/tasks")}
-            style={{
-              marginBottom: 24,
-              background: isDarkMode ? "#23272f" : "#fff",
-              color: isDarkMode ? "#fff" : "#262626",
-              border: isDarkMode ? "1px solid #333" : undefined,
-              boxShadow: "none",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontSize: 16, marginRight: 8 }}>&larr;</span> Back to My Tasks
-          </Button>
-          {/* Header Section */}
-          <div style={{ marginBottom: "24px" }}>
-            <Row justify="space-between" align="top">
-              <Col span={18}>
-                <Title level={2} style={{ margin: 0, color: isDarkMode ? "#fff" : "#262626" }}>
-                  {task.title}
-                </Title>
-              </Col>
-              <Col>
-                <Badge
-                  status={
-                    task.status === "Completed" ? "success" : "processing"
-                  }
-                  text={
-                    <Tag
-                      color={
-                        task.status === "Completed" ? "success" : "default"
-                      }
-                      style={{
-                        borderRadius: "16px",
-                        padding: "4px 12px",
-                        fontSize: "12px",
-                        fontWeight: "500",
-                        color: isDarkMode ? "#fff" : undefined,
-                        background: isDarkMode && task.status !== "Completed" ? "#23272f" : undefined,
-                      }}
-                    >
-                      {getStatusIcon(task.status)} {task.status}
-                    </Tag>
-                  }
-                />
-              </Col>
-            </Row>
+          Back to my missions
+        </Button>
+
+        <section style={styles.hero}>
+          <div>
+            <Text style={styles.kicker}>Mission details</Text>
+
+            <Title style={styles.title}>{task.title}</Title>
+
+            <Space size={[10, 10]} wrap>
+              <SoftTag value={task.status} map={statusMap} />
+              <SoftTag value={task.priority} map={priorityMap} />
+              <Tag style={styles.dateTag}>
+                <CalendarOutlined /> Due {formatDate(task.dueDate)}
+              </Tag>
+            </Space>
           </div>
 
-          {/* Description */}
-          <div style={{ marginBottom: "32px" }}>
-            <Title level={5} style={{ color: isDarkMode ? "#bbb" : "#8c8c8c", marginBottom: "8px" }}>
-              Description
-            </Title>
-            <Paragraph
-              style={{ fontSize: "14px", lineHeight: "1.6", color: isDarkMode ? "#eee" : "#595959" }}
-            >
-              {task.description}
-            </Paragraph>
-          </div>
-
-          {/* Task Meta Information */}
-          <Row gutter={[32, 16]} style={{ marginBottom: "32px" }}>
-            <Col xs={24} sm={8}>
-              <div>
-                <Text
-                  strong
-                  style={{
-                    fontSize: "12px",
-                    color: isDarkMode ? "#bbb" : "#8c8c8c",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Priority
-                </Text>
-                <div style={{ marginTop: "4px" }}>
-                  <Tag
-                    color={getPriorityColor(task.priority)}
-                    style={{
-                      borderRadius: "4px",
-                      fontWeight: "600",
-                      fontSize: "12px",
-                      color: isDarkMode ? "#fff" : "#262626",
-                      background: isDarkMode ? "#23272f" : undefined,
-                    }}
-                  >
-                    {task.priority}
-                  </Tag>
-                </div>
-              </div>
-            </Col>
-
-            <Col xs={24} sm={8}>
-              <div>
-                <Text
-                  strong
-                  style={{
-                    fontSize: "12px",
-                    color: isDarkMode ? "#bbb" : "#8c8c8c",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Due Date
-                </Text>
-                <div
-                  style={{
-                    marginTop: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  <CalendarOutlined
-                    style={{ marginRight: "6px", color: "#8c8c8c" }}
-                  />
-                  <Text style={{ fontSize: "14px", fontWeight: "500" }}>
-                    {formatDate(task.dueDate)}
-                  </Text>
-                </div>
-              </div>
-            </Col>
-
-            <Col xs={24} sm={8}>
-              <div>
-                <Text
-                  strong
-                  style={{
-                    fontSize: "12px",
-                    color: isDarkMode ? "#bbb" : "#8c8c8c",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Assigned To
-                </Text>
-                <div style={{ marginTop: "8px" }}>
-                  <Avatar.Group
-                    size="small"
-                    max={{
-                      count: 3,
-                      style: {
-                        color: "#f56a00",
-                        backgroundColor: "#fde3cf",
-                        cursor: "pointer",
-                        fontSize: "12px",
-                      },
-                    }}
-                  >
-                    {task.assignedTo?.map((user) => (
-                      <Tooltip
-                        key={user._id}
-                        title={`${user.name} (${user.email})`}
-                      >
-                        <Avatar
-                          src={getSecureImageUrl(user.profileImageUrl)}
-                          icon={<UserOutlined />}
-                          style={{ cursor: "pointer" }}
-                        >
-                          {user.name?.charAt(0)}
-                        </Avatar>
-                      </Tooltip>
-                    ))}
-                  </Avatar.Group>{" "}
-                </div>
-              </div>
-            </Col>
-          </Row>
-
-          <Divider />
-
-          {/* Progress Section */}
-          <div style={{ marginBottom: "24px" }}>
-            <Row
-              justify="space-between"
-              align="center"
-              style={{ marginBottom: "8px" }}
-            >
-              <Text strong style={{ fontSize: "16px" }}>
-                Progress
-              </Text>
-              <Text style={{ fontSize: "14px", color: "#8c8c8c" }}>
-                {completedTasks} of {totalTasks} tasks completed
-              </Text>
-            </Row>
+          <div style={styles.progressPanel}>
             <Progress
+              type="circle"
               percent={progressPercent}
+              size={104}
               strokeColor={{
-                "0%": "#108ee9",
-                "100%": "#87d068",
+                "0%": "#38bdf8",
+                "100%": "#f97316",
               }}
-              style={{ marginBottom: "16px" }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "32px" }}>
-            <Title level={4} style={{ marginBottom: "16px", color: isDarkMode ? "#fff" : "#262626" }}>
-              Todo Checklist
-            </Title>
-            <List
-              dataSource={task.todoChecklist || []}
-              renderItem={(item, index) => (
-                <List.Item
-                  style={{
-                    padding: "12px 0",
-                    borderBottom:
-                      index === (task.todoChecklist?.length || 0) - 1
-                        ? "none"
-                        : isDarkMode
-                        ? "1px solid #333"
-                        : "1px solid #f0f0f0",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <Checkbox
-                      checked={item.completed}
-                      onChange={() => updateTodoChecklist(index)}
-                      style={{ marginRight: "12px" }}
-                    />
-                    <Text
-                      style={{
-                        textDecoration: item.completed
-                          ? "line-through"
-                          : "none",
-                        color: item.completed ? (isDarkMode ? "#bbb" : "#8c8c8c") : (isDarkMode ? "#fff" : "#262626"),
-                        fontSize: "14px",
-                      }}
-                    >
-                      {item.text}
-                    </Text>
-                  </div>
-                </List.Item>
+              trailColor="rgba(148, 163, 184, 0.16)"
+              format={(percent) => (
+                <span style={{ color: "#f8fafc", fontWeight: 950 }}>
+                  {percent}%
+                </span>
               )}
             />
-          </div>
 
-          {/* Attachments */}
-          {task.attachments && task.attachments.length > 0 && (
             <div>
-              <Title
-                level={4}
-                style={{ marginBottom: "16px", color: isDarkMode ? "#fff" : "#262626" }}
-              >
+              <Text style={styles.progressTitle}>Checklist progress</Text>
+              <Text style={styles.progressText}>
+                {completedTasks} of {totalTasks} items completed
+              </Text>
+            </div>
+          </div>
+        </section>
+
+        <Row gutter={[20, 20]}>
+          <Col xs={24} lg={16}>
+            <Card style={styles.card} styles={{ body: { padding: 24 } }}>
+              <Text style={styles.sectionKicker}>Briefing</Text>
+              <Title level={4} style={styles.sectionTitle}>
+                Description
+              </Title>
+
+              <Paragraph style={styles.description}>
+                {task.description || "No description added."}
+              </Paragraph>
+            </Card>
+
+            <Card
+              style={{ ...styles.card, marginTop: 20 }}
+              styles={{ body: { padding: 24 } }}
+            >
+              <Text style={styles.sectionKicker}>Execution list</Text>
+              <Title level={4} style={styles.sectionTitle}>
+                Todo checklist
+              </Title>
+
+              {task.todoChecklist?.length ? (
+                <List
+                  dataSource={task.todoChecklist}
+                  renderItem={(item, index) => (
+                    <List.Item style={styles.todoItem}>
+                      <Checkbox
+                        checked={item.completed}
+                        onChange={() => updateTodoChecklist(index)}
+                      />
+
+                      <Text
+                        style={{
+                          ...styles.todoText,
+                          opacity: item.completed ? 0.52 : 1,
+                          textDecoration: item.completed
+                            ? "line-through"
+                            : "none",
+                        }}
+                      >
+                        {item.text}
+                      </Text>
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <Empty
+                  description={
+                    <span style={{ color: "#94a3b8" }}>No checklist items</span>
+                  }
+                />
+              )}
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={8}>
+            <Card style={styles.card} styles={{ body: { padding: 24 } }}>
+              <Text style={styles.sectionKicker}>Assigned squad</Text>
+              <Title level={4} style={styles.sectionTitle}>
+                Team members
+              </Title>
+
+              {task.assignedTo?.length ? (
+                <Avatar.Group
+                  size={48}
+                  max={{
+                    count: 4,
+                    style: {
+                      color: "#bae6fd",
+                      backgroundColor: "rgba(56, 189, 248, 0.14)",
+                      cursor: "pointer",
+                    },
+                  }}
+                >
+                  {task.assignedTo.map((member) => (
+                    <Tooltip
+                      key={member._id}
+                      title={`${member.name} (${member.email})`}
+                    >
+                      <Avatar
+                        src={getSecureImageUrl(member.profileImageUrl)}
+                        icon={<UserOutlined />}
+                        style={styles.avatar}
+                      >
+                        {member.name?.charAt(0)}
+                      </Avatar>
+                    </Tooltip>
+                  ))}
+                </Avatar.Group>
+              ) : (
+                <Text style={styles.muted}>No members assigned.</Text>
+              )}
+            </Card>
+
+            <Card
+              style={{ ...styles.card, marginTop: 20 }}
+              styles={{ body: { padding: 24 } }}
+            >
+              <Text style={styles.sectionKicker}>Resources</Text>
+              <Title level={4} style={styles.sectionTitle}>
                 Attachments
               </Title>
-              <Space direction="vertical" style={{ width: "100%" }}>
-                {task.attachments.map((attachment, index) => (
-                  <Button
-                    key={index}
-                    type="text"
-                    icon={<LinkOutlined />}
-                    onClick={() => handleClick(attachment)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "flex-start",
-                      padding: "8px 12px",
-                      height: "auto",
-                      border: isDarkMode ? "1px solid #333" : "1px solid #d9d9d9",
-                      borderRadius: "6px",
-                      backgroundColor: isDarkMode ? "#23272f" : "#fafafa",
-                      width: "100%",
-                      textAlign: "left",
-                    }}
-                  >
-                    <Text style={{ fontSize: "14px", color: isDarkMode ? "#91caff" : "#1890ff" }}>
-                      {String(index + 1).padStart(2, "0")} {attachment}
-                    </Text>
-                  </Button>
-                ))}
-              </Space>
-            </div>
-          )}
-        </Card>
+
+              {task.attachments?.length ? (
+                <Space direction="vertical" style={{ width: "100%" }}>
+                  {task.attachments.map((attachment, index) => (
+                    <Button
+                      key={`${attachment}-${index}`}
+                      icon={<LinkOutlined />}
+                      onClick={() => openAttachment(attachment)}
+                      style={styles.attachmentBtn}
+                    >
+                      <span style={styles.attachmentText}>
+                        <PaperClipOutlined /> Resource {index + 1}
+                      </span>
+                    </Button>
+                  ))}
+                </Space>
+              ) : (
+                <Text style={styles.muted}>No attachments added.</Text>
+              )}
+            </Card>
+          </Col>
+        </Row>
       </div>
     </DashboardLayout>
   );
 }
 
-// Helper to ensure HTTPS for image URLs
-const getSecureImageUrl = (url) => url?.replace(/^http:\/\//, "https://");
-
 export default TaskDetails;
+
+const styles = {
+  page: {
+    display: "grid",
+    gap: 20,
+  },
+  backBtn: {
+    width: "fit-content",
+    background: "rgba(15, 23, 42, 0.78)",
+    color: "#e5e7eb",
+    border: "1px solid rgba(148, 163, 184, 0.18)",
+    fontWeight: 800,
+  },
+  hero: {
+    padding: 28,
+    borderRadius: 30,
+    border: "1px solid rgba(148, 163, 184, 0.16)",
+    background:
+      "linear-gradient(135deg, rgba(56,189,248,0.14), rgba(168,85,247,0.1), rgba(249,115,22,0.12))",
+    boxShadow: "0 24px 70px rgba(0,0,0,0.24)",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 24,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  kicker: {
+    color: "#bae6fd",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    fontWeight: 950,
+    fontSize: 12,
+  },
+  title: {
+    color: "#f8fafc",
+    margin: "8px 0 16px",
+    fontSize: "clamp(30px, 5vw, 56px)",
+    lineHeight: 1,
+    letterSpacing: "-0.06em",
+  },
+  dateTag: {
+    color: "#e5e7eb",
+    background: "rgba(148, 163, 184, 0.12)",
+    border: "1px solid rgba(148, 163, 184, 0.22)",
+    borderRadius: 999,
+    padding: "6px 12px",
+    fontWeight: 950,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+  },
+  progressPanel: {
+    minWidth: 285,
+    padding: 16,
+    borderRadius: 26,
+    background: "rgba(2, 6, 23, 0.42)",
+    border: "1px solid rgba(148, 163, 184, 0.16)",
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+  },
+  progressTitle: {
+    display: "block",
+    color: "#f8fafc",
+    fontWeight: 950,
+    fontSize: 16,
+  },
+  progressText: {
+    display: "block",
+    color: "#94a3b8",
+    marginTop: 4,
+  },
+  card: {
+    overflow: "hidden",
+  },
+  sectionKicker: {
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    fontWeight: 950,
+    fontSize: 11,
+  },
+  sectionTitle: {
+    color: "#f8fafc",
+    margin: "4px 0 16px",
+    letterSpacing: "-0.04em",
+  },
+  description: {
+    color: "#cbd5e1",
+    fontSize: 15,
+    lineHeight: 1.8,
+    marginBottom: 0,
+  },
+  todoItem: {
+    padding: "14px 0",
+    borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
+  todoText: {
+    color: "#e5e7eb",
+    fontSize: 15,
+  },
+  avatar: {
+    background: "linear-gradient(135deg, #38bdf8, #f97316)",
+    color: "#fff",
+    fontWeight: 900,
+  },
+  muted: {
+    color: "#94a3b8",
+  },
+  attachmentBtn: {
+    width: "100%",
+    minHeight: 46,
+    justifyContent: "flex-start",
+    background: "rgba(15, 23, 42, 0.78)",
+    color: "#bae6fd",
+    border: "1px solid rgba(56, 189, 248, 0.22)",
+    borderRadius: 14,
+    fontWeight: 850,
+  },
+  attachmentText: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+  },
+};

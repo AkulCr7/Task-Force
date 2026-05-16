@@ -1,15 +1,68 @@
-import React, { useContext, useEffect, useState } from "react";
-import { Row, Col, Card, Empty } from "antd";
-import { Pie, Bar } from "react-chartjs-2";
-import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from "chart.js";
-import { ThemeContext } from "../context/ThemeContext";
+import React, { useEffect, useMemo, useState } from "react";
+import { Card, Col, Empty, Row, Typography } from "antd";
+import { Bar, Doughnut } from "react-chartjs-2";
+import {
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Chart,
+  Legend,
+  LinearScale,
+  Tooltip,
+} from "chart.js";
+import {
+  BarChartOutlined,
+  PieChartOutlined,
+} from "@ant-design/icons";
 
-Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
+Chart.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement
+);
+
+const { Text, Title } = Typography;
+
+const chartColors = {
+  pending: "#f97316",
+  progress: "#38bdf8",
+  completed: "#22c55e",
+  overdue: "#ef4444",
+  low: "#22c55e",
+  medium: "#38bdf8",
+  high: "#f97316",
+};
+
+const commonPluginOptions = {
+  legend: {
+    labels: {
+      color: "#cbd5e1",
+      boxWidth: 12,
+      boxHeight: 12,
+      padding: 18,
+      font: {
+        size: 12,
+        weight: "700",
+      },
+    },
+  },
+  tooltip: {
+    backgroundColor: "rgba(2, 6, 23, 0.92)",
+    titleColor: "#f8fafc",
+    bodyColor: "#cbd5e1",
+    borderColor: "rgba(148, 163, 184, 0.18)",
+    borderWidth: 1,
+    padding: 12,
+    cornerRadius: 12,
+  },
+};
 
 const TaskCharts = ({ data }) => {
-  const { isDarkMode } = useContext(ThemeContext);
-  const [pieData, setPieData] = useState({});
-  const [barData, setBarData] = useState({});
+  const [pieData, setPieData] = useState(null);
+  const [barData, setBarData] = useState(null);
 
   useEffect(() => {
     const taskDistribution = data?.taskDistribution || {};
@@ -26,13 +79,14 @@ const TaskCharts = ({ data }) => {
             taskDistribution.Overdue || 0,
           ],
           backgroundColor: [
-            isDarkMode ? "#f59e42" : "#f59e42",
-            isDarkMode ? "#1677ff" : "#1677ff",
-            isDarkMode ? "#22c55e" : "#22c55e",
-            isDarkMode ? "#ff4d4f" : "#ff4d4f", // Red for Overdue
+            chartColors.pending,
+            chartColors.progress,
+            chartColors.completed,
+            chartColors.overdue,
           ],
-          borderColor: isDarkMode ? "#23272f" : "#fff",
-          borderWidth: 2,
+          borderColor: "rgba(15, 23, 42, 0.96)",
+          borderWidth: 4,
+          hoverOffset: 10,
         },
       ],
     });
@@ -48,110 +102,191 @@ const TaskCharts = ({ data }) => {
             taskPriorityLevels.High || 0,
           ],
           backgroundColor: [
-            isDarkMode ? "#22c55e" : "#22c55e",
-            isDarkMode ? "#1677ff" : "#1677ff",
-            isDarkMode ? "#f59e42" : "#f59e42",
+            chartColors.low,
+            chartColors.medium,
+            chartColors.high,
           ],
-          borderRadius: 8,
+          borderRadius: 14,
+          borderSkipped: false,
+          maxBarThickness: 62,
         },
       ],
     });
-  }, [data, isDarkMode]);
+  }, [data]);
+
+  const hasPieData = useMemo(
+    () => pieData?.datasets?.[0]?.data?.some((value) => value > 0),
+    [pieData]
+  );
+
+  const hasBarData = useMemo(
+    () => barData?.datasets?.[0]?.data?.some((value) => value > 0),
+    [barData]
+  );
 
   const pieOptions = {
     responsive: true,
+    maintainAspectRatio: false,
+    cutout: "62%",
     plugins: {
+      ...commonPluginOptions,
       legend: {
-        position: "right",
-        labels: {
-          color: isDarkMode ? "#fff" : "#222",
-          font: { size: 14 },
-        },
-      },
-      tooltip: {
-        backgroundColor: isDarkMode ? "#23272f" : "#fff",
-        titleColor: isDarkMode ? "#fff" : "#222",
-        bodyColor: isDarkMode ? "#fff" : "#222",
+        ...commonPluginOptions.legend,
+        position: "bottom",
       },
     },
   };
 
   const barOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
+      ...commonPluginOptions,
       legend: {
         display: false,
-      },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        backgroundColor: isDarkMode ? "#23272f" : "#fff",
-        titleColor: isDarkMode ? "#fff" : "#222",
-        bodyColor: isDarkMode ? "#fff" : "#222",
       },
     },
     scales: {
       x: {
         ticks: {
-          color: isDarkMode ? "#fff" : "#222",
-          font: { size: 14 },
+          color: "#cbd5e1",
+          font: {
+            size: 12,
+            weight: "700",
+          },
         },
         grid: {
-          color: isDarkMode ? "#444" : "#eee",
+          display: false,
+        },
+        border: {
+          color: "rgba(148, 163, 184, 0.16)",
         },
       },
       y: {
         beginAtZero: true,
         ticks: {
-          color: isDarkMode ? "#fff" : "#222",
-          font: { size: 14 },
+          color: "#94a3b8",
+          precision: 0,
+          font: {
+            size: 12,
+          },
         },
         grid: {
-          color: isDarkMode ? "#444" : "#eee",
+          color: "rgba(148, 163, 184, 0.12)",
+        },
+        border: {
+          color: "rgba(148, 163, 184, 0.16)",
         },
       },
     },
   };
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col xs={24} md={12}>
-        <Card
-          title="Task Distribution"
-          style={{
-            minHeight: 350,
-            height: 400,
-            background: isDarkMode ? "rgb(15 26 47)" : undefined,
-            color: isDarkMode ? "#fff" : undefined,
-          }}
-        >
-          {pieData.datasets && pieData.datasets[0].data.some((v) => v > 0) ? (
-            <Pie data={pieData} options={{ ...pieOptions, maintainAspectRatio: false }} height={300} />
-          ) : (
-            <Empty description="No Data" />
-          )}
+    <Row gutter={[20, 20]}>
+      <Col xs={24} lg={12}>
+        <Card style={styles.card} styles={{ body: { padding: 24 } }}>
+          <ChartHeader
+            icon={<PieChartOutlined />}
+            kicker="Distribution"
+            title="Mission status"
+            subtitle="How work is currently moving through the system."
+          />
+
+          <div style={styles.chartBox}>
+            {hasPieData ? (
+              <Doughnut data={pieData} options={pieOptions} />
+            ) : (
+              <Empty
+                description={<span style={{ color: "#94a3b8" }}>No data</span>}
+              />
+            )}
+          </div>
         </Card>
       </Col>
-      <Col xs={24} md={12}>
-        <Card
-          title="Task Priority Levels"
-          style={{
-            minHeight: 350,
-            height: 400,
-            background: isDarkMode ? "rgb(15 26 47)" : undefined,
-            color: isDarkMode ? "#fff" : undefined,
-          }}
-        >
-          {barData.datasets && barData.datasets[0].data.some((v) => v > 0) ? (
-            <Bar data={barData} options={{ ...barOptions, maintainAspectRatio: false }} height={300} />
-          ) : (
-            <Empty description="No Data" />
-          )}
+
+      <Col xs={24} lg={12}>
+        <Card style={styles.card} styles={{ body: { padding: 24 } }}>
+          <ChartHeader
+            icon={<BarChartOutlined />}
+            kicker="Priority"
+            title="Priority load"
+            subtitle="Task pressure split across low, medium, and high priority."
+          />
+
+          <div style={styles.chartBox}>
+            {hasBarData ? (
+              <Bar data={barData} options={barOptions} />
+            ) : (
+              <Empty
+                description={<span style={{ color: "#94a3b8" }}>No data</span>}
+              />
+            )}
+          </div>
         </Card>
       </Col>
     </Row>
   );
 };
 
+function ChartHeader({ icon, kicker, title, subtitle }) {
+  return (
+    <div style={styles.header}>
+      <div style={styles.iconBox}>{icon}</div>
+
+      <div>
+        <Text style={styles.kicker}>{kicker}</Text>
+        <Title level={4} style={styles.title}>
+          {title}
+        </Title>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </div>
+    </div>
+  );
+}
+
 export default TaskCharts;
+
+const styles = {
+  card: {
+    minHeight: 430,
+    overflow: "hidden",
+  },
+  header: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 14,
+    marginBottom: 22,
+  },
+  iconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    display: "grid",
+    placeItems: "center",
+    color: "#bae6fd",
+    background: "rgba(56, 189, 248, 0.12)",
+    border: "1px solid rgba(56, 189, 248, 0.22)",
+    fontSize: 22,
+    flexShrink: 0,
+  },
+  kicker: {
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    fontWeight: 900,
+    fontSize: 11,
+  },
+  title: {
+    color: "#f8fafc",
+    margin: "3px 0 2px",
+    letterSpacing: "-0.04em",
+  },
+  subtitle: {
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  chartBox: {
+    height: 310,
+    position: "relative",
+  },
+};
