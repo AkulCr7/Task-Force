@@ -2,14 +2,6 @@
 
 Team Task Manager is a full-stack web application that helps teams create projects, assign tasks, and track work progress. The system includes role-based access control where admins can manage projects, team members, and tasks, while members can view assigned work and update task status.
 
-## Live Demo
-
-Add your live project link here.
-
-## GitHub Repository
-
-Add your GitHub repository link here.
-
 ## Features
 
 - User signup and login
